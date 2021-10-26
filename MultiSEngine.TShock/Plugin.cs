@@ -1,13 +1,11 @@
-﻿using HttpServer;
-using OTAPI;
+﻿using OTAPI;
 using System;
 using System.IO;
-using System.Linq;
 using System.Reflection;
 using Terraria;
+using Terraria.ID;
 using Terraria.Net.Sockets;
 using TerrariaApi.Server;
-using TShockAPI;
 using TShockAPI.Hooks;
 
 namespace MultiSEngine.TShock
@@ -31,17 +29,12 @@ namespace MultiSEngine.TShock
             Hooks.Net.SendBytes = OnSendData;
             GeneralHooks.ReloadEvent += _ => Config._instance = null;
             PlayerHooks.PlayerCommand += OnExcuteCommand;
-
-            Commands.ChatCommands.Add(new Command("*",(args) =>
-            {
-                Commands.HandleCommand(args.Player, "/mse list");
-            }, "msetest"));
         }
         internal Hooks.Net.ReceiveDataHandler OldGetDataHandler;
         internal Hooks.Net.SendBytesHandler OldSendDataHandler;
         private void OnExcuteCommand(PlayerCommandEventArgs args)
         {
-            if(args.CommandName.ToLower() == "mse")
+            if (args.CommandName.ToLower() == "mse")
             {
                 args.Handled = true;
                 args.Player.SendRawData(new Packets.ExcuteMSECommand()
@@ -53,9 +46,23 @@ namespace MultiSEngine.TShock
         }
         public HookResult OnSendData(ref int remoteClient, ref byte[] data, ref int offset, ref int size, ref SocketSendCallback callback, ref object state)
         {
-            if (Main.versionNumber == "Terraria238" || data[offset + 2] != 20)
+            if (TShockAPI.TShock.VersionNum >= new Version(4, 5, 0) || data[offset + 2] != 20)
                 return OldSendDataHandler.Invoke(ref remoteClient, ref data, ref offset, ref size, ref callback, ref state);
-
+            using (var reader = new BinaryReader(new MemoryStream(data, offset + 3, size - 3)))
+            {
+                short tileX = reader.ReadInt16();
+                short tileY = reader.ReadInt16();
+                ushort width = reader.ReadByte();
+                ushort length = reader.ReadByte();
+                byte changeType = reader.ReadByte();
+                ushort header = Math.Max(width, length);
+                if (width != length)
+                {
+                    TShockAPI.TShock.Log.ConsoleInfo($"[MultiSEngine] modified tile square for [{TShockAPI.TShock.Players[remoteClient]?.Name}].");
+                    TShockAPI.TShock.Players[remoteClient].SendTileRect(tileX, tileY, (byte)header, (byte)header, (TileChangeType)changeType);
+                    return HookResult.Cancel;
+                }
+            }
             return HookResult.Cancel;
         }
         public HookResult OnReceiveData(MessageBuffer buffer, ref byte packetid, ref int readoffset, ref int start, ref int length)

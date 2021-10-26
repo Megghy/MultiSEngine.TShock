@@ -81,4 +81,7 @@
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>copy /Y $(TargetPath) D:\TShock4.5.0_Terraria1.4.2.1\ServerPlugins</PostBuildEvent>
+  </PropertyGroup>
 </Project>
