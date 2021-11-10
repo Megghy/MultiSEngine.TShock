@@ -1,4 +1,5 @@
-﻿using OTAPI;
+﻿using System.Collections.Generic;
+using OTAPI;
 using System;
 using System.IO;
 using System.Reflection;
@@ -30,6 +31,7 @@ namespace MultiSEngine.TShock
             GeneralHooks.ReloadEvent += _ => Config._instance = null;
             PlayerHooks.PlayerCommand += OnExcuteCommand;
         }
+
         internal Hooks.Net.ReceiveDataHandler OldGetDataHandler;
         internal Hooks.Net.SendBytesHandler OldSendDataHandler;
         private void OnExcuteCommand(PlayerCommandEventArgs args)
@@ -46,7 +48,7 @@ namespace MultiSEngine.TShock
         }
         public HookResult OnSendData(ref int remoteClient, ref byte[] data, ref int offset, ref int size, ref SocketSendCallback callback, ref object state)
         {
-            if (TShockAPI.TShock.VersionNum >= new Version(4, 5, 0) || data[offset + 2] != 20)
+            if (TShockAPI.TShock.VersionNum < new Version(4, 5, 0) || data[offset + 2] != 20)
                 return OldSendDataHandler.Invoke(ref remoteClient, ref data, ref offset, ref size, ref callback, ref state);
             using (var reader = new BinaryReader(new MemoryStream(data, offset + 3, size - 3)))
             {
@@ -58,12 +60,13 @@ namespace MultiSEngine.TShock
                 ushort header = Math.Max(width, length);
                 if (width != length)
                 {
-                    TShockAPI.TShock.Log.ConsoleInfo($"[MultiSEngine] modified tile square for [{TShockAPI.TShock.Players[remoteClient]?.Name}].");
-                    TShockAPI.TShock.Players[remoteClient].SendTileRect(tileX, tileY, (byte)header, (byte)header, (TileChangeType)changeType);
+                    TShockAPI.TShock.Log.Info($"[MultiSEngine] modified tile square <{tileX}, {tileY}: {header}> for [{TShockAPI.TShock.Players[remoteClient]?.Name}].");
+                    TShockAPI.TShock.Players[remoteClient].SendTileSquare(tileX, tileY, (byte)header);
                     return HookResult.Cancel;
                 }
+                else
+                    return HookResult.Continue;
             }
-            return HookResult.Cancel;
         }
         public HookResult OnReceiveData(MessageBuffer buffer, ref byte packetid, ref int readoffset, ref int start, ref int length)
         {

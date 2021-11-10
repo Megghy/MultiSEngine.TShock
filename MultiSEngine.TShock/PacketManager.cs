@@ -7,10 +7,10 @@ using TShockAPI;
 
 namespace MultiSEngine.TShock
 {
-    internal class PacketManager
+    public class PacketManager
     {
         private static readonly Dictionary<string, Type> Packets = new();
-        public static void Init()
+        internal static void Init()
         {
             RegisterPackets<SyncIP>();
             RegisterPackets<ExcuteMSECommand>();
@@ -27,9 +27,9 @@ namespace MultiSEngine.TShock
         }
         public static PacketBase Read(BinaryReader reader, TSPlayer plr)
         {
-            if(reader is null)
+            if (reader is null)
                 throw new ArgumentNullException(nameof(reader));
-            if(plr is null)
+            if (plr is null)
                 throw new ArgumentNullException(nameof(plr));
             var id = reader.ReadString();
             var token = reader.ReadString();
@@ -41,7 +41,7 @@ namespace MultiSEngine.TShock
             if (Packets.FirstOrDefault(p => p.Key == id) is { } p)
             {
                 var packet = Activator.CreateInstance(p.Value) as Packets.PacketBase;
-                if(!packet.PreRecieve(plr))
+                if (!packet.PreRecieve(plr))
                 {
                     packet.InternalRead(reader);
                     packet.PostRecieve(plr);
